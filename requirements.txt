@@ -1,0 +1,6 @@
+cryptography>=41.0.0
+requests>=2.31.0
+openpyxl>=3.1.2
+pyautogui>=0.9.54
+selenium>=4.15.0
+beautifulsoup4>=4.12.0
