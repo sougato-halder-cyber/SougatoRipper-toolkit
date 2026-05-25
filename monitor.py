@@ -18,6 +18,7 @@ class ActivityMonitor:
     def __init__(self):
         self.screenshot_dir = "data/screenshots"
         self.log_dir = "data"
+        self.log_file = os.path.join(self.log_dir, "activity_log.txt")
         os.makedirs(self.screenshot_dir, exist_ok=True)
         os.makedirs(self.log_dir, exist_ok=True)
         self.running = False
@@ -35,7 +36,11 @@ class ActivityMonitor:
         start_time = time.time()
         count = 0
 
-        log_path = os.path.join(self.log_dir, "activity_log.txt")
+        # Ensure log file exists
+        if not os.path.exists(self.log_file):
+            with open(self.log_file, "w", encoding="utf-8") as f:
+                f.write(f"# Activity Log - Created {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write("=" * 60 + "\n")
 
         while not self._stop_event.is_set():
             count += 1
@@ -45,13 +50,16 @@ class ActivityMonitor:
             try:
                 screenshot_path = os.path.join(self.screenshot_dir, f"screenshot_{timestamp}.png")
                 pyautogui.screenshot(screenshot_path)
-                msg = f"[{timestamp}] Screenshot saved: {screenshot_path}"
+                msg = f"[{timestamp}] Screenshot #{count} saved: {screenshot_path}"
             except Exception as e:
-                msg = f"[{timestamp}] Screenshot failed: {e}"
+                msg = f"[{timestamp}] Screenshot #{count} failed: {e}"
 
             # Log event
-            with open(log_path, "a", encoding="utf-8") as f:
-                f.write(msg + "\n")
+            try:
+                with open(self.log_file, "a", encoding="utf-8") as f:
+                    f.write(msg + "\n")
+            except Exception as e:
+                msg += f" | LOG ERROR: {e}"
 
             if callback:
                 callback(msg)

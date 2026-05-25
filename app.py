@@ -6,9 +6,10 @@ Author: SougatoRipper
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext, filedialog
+from tkinter import ttk, messagebox, scrolledtext, filedialog, simpledialog
 import threading
 import os
+import datetime
 
 from scanner import SubdomainEnumerator, PortScanner
 from sqli_tester import SQLiTester
@@ -23,7 +24,7 @@ class SecurityToolkitApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Automated Security & Monitoring Toolkit")
-        self.root.geometry("1200x800")
+        self.root.geometry("1250x850")
         self.root.minsize(1000, 700)
         self.root.configure(bg="#1e1e2e")
 
@@ -145,10 +146,17 @@ class SecurityToolkitApp:
         tk.Button(port_frame, text="Scan Ports", command=self._start_port_scan,
                   bg="#a6e3a1", fg="#1e1e2e", font=("Helvetica", 11, "bold"), cursor="hand2").grid(row=2, column=1, pady=10)
 
-        # Output area
-        self.txt_recon = scrolledtext.ScrolledText(frame, height=12, bg="#181825", fg="#cdd6f4",
+        # Output area + Clear button
+        out_frame = tk.Frame(frame, bg="#1e1e2e")
+        out_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+
+        self.txt_recon = scrolledtext.ScrolledText(out_frame, height=12, bg="#181825", fg="#cdd6f4",
                                                       font=("Consolas", 10), insertbackground="#cdd6f4")
-        self.txt_recon.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+        self.txt_recon.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+
+        btn_clear = tk.Button(out_frame, text="Clear\nOutput", command=lambda: self.txt_recon.delete(1.0, tk.END),
+                              bg="#f38ba8", fg="#1e1e2e", font=("Helvetica", 9, "bold"), cursor="hand2")
+        btn_clear.pack(side=tk.RIGHT, padx=(5, 0), fill=tk.Y)
 
     def _browse_wordlist(self):
         path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
@@ -162,8 +170,9 @@ class SecurityToolkitApp:
         if not domain or not wordlist:
             messagebox.showwarning("Input Error", "Please provide both domain and wordlist path.")
             return
-        self.txt_recon.delete(1.0, tk.END)
-        self.txt_recon.insert(tk.END, f"[+] Starting subdomain enumeration for: {domain}\n")
+        # FIX #2: Don't clear previous output, append new
+        self.txt_recon.insert(tk.END, f"\n{'='*50}\n[+] Starting subdomain enumeration for: {domain} | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
+        self.txt_recon.see(tk.END)
         self.status.config(text="Running subdomain enumeration...")
         threading.Thread(target=self._run_subdomain_enum, args=(domain, wordlist), daemon=True).start()
 
@@ -186,8 +195,9 @@ class SecurityToolkitApp:
         except ValueError:
             messagebox.showerror("Input Error", "Ports must be comma-separated integers.")
             return
-        self.txt_recon.delete(1.0, tk.END)
-        self.txt_recon.insert(tk.END, f"[+] Starting port scan on: {target}\n")
+        # FIX #2: Append, don't clear
+        self.txt_recon.insert(tk.END, f"\n{'='*50}\n[+] Starting port scan on: {target} | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
+        self.txt_recon.see(tk.END)
         self.status.config(text="Scanning ports...")
         threading.Thread(target=self._run_port_scan, args=(target, ports), daemon=True).start()
 
@@ -201,13 +211,15 @@ class SecurityToolkitApp:
 
     def _display_recon_results(self, results, scan_type):
         if scan_type == "subdomain":
-            self.txt_recon.insert(tk.END, f"\n[+] Found {len(results)} active subdomains:\n")
+            self.txt_recon.insert(tk.END, f"[+] Found {len(results)} active subdomains:\n")
             for sub in results:
                 self.txt_recon.insert(tk.END, f"    → {sub}\n")
         else:
-            self.txt_recon.insert(tk.END, f"\n[+] Port Scan Results:\n")
+            self.txt_recon.insert(tk.END, f"[+] Port Scan Results:\n")
             for port, status, service in results:
                 self.txt_recon.insert(tk.END, f"    → Port {port}: {status} ({service})\n")
+        self.txt_recon.insert(tk.END, f"[+] Done.\n")
+        self.txt_recon.see(tk.END)
         self.status.config(text="Ready")
 
     # ───────────────────────────────
@@ -259,10 +271,15 @@ class SecurityToolkitApp:
         tk.Button(btn_frame, text="Brute Force Hash", command=self._start_brute_force,
                   bg="#f38ba8", fg="#1e1e2e", font=("Helvetica", 11, "bold"), cursor="hand2").pack(side=tk.LEFT)
 
-        # Output
-        self.txt_vuln = scrolledtext.ScrolledText(frame, height=15, bg="#181825", fg="#cdd6f4",
+        # Output + Clear
+        out_frame = tk.Frame(frame, bg="#1e1e2e")
+        out_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+        self.txt_vuln = scrolledtext.ScrolledText(out_frame, height=15, bg="#181825", fg="#cdd6f4",
                                                      font=("Consolas", 10), insertbackground="#cdd6f4")
-        self.txt_vuln.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+        self.txt_vuln.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+        btn_clear = tk.Button(out_frame, text="Clear\nOutput", command=lambda: self.txt_vuln.delete(1.0, tk.END),
+                              bg="#f38ba8", fg="#1e1e2e", font=("Helvetica", 9, "bold"), cursor="hand2")
+        btn_clear.pack(side=tk.RIGHT, padx=(5, 0), fill=tk.Y)
 
     def _browse_pass_wordlist(self):
         path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
@@ -276,8 +293,8 @@ class SecurityToolkitApp:
         if not url or not param:
             messagebox.showwarning("Input Error", "Please provide URL and parameter name.")
             return
-        self.txt_vuln.delete(1.0, tk.END)
-        self.txt_vuln.insert(tk.END, f"[+] Testing SQL Injection on: {url}\n")
+        self.txt_vuln.insert(tk.END, f"\n{'='*50}\n[+] Testing SQL Injection on: {url} | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
+        self.txt_vuln.see(tk.END)
         self.status.config(text="Testing SQL Injection...")
         threading.Thread(target=self._run_sqli_test, args=(url, param), daemon=True).start()
 
@@ -290,13 +307,14 @@ class SecurityToolkitApp:
             self.root.after(0, lambda: self.status.config(text="Ready"))
 
     def _display_sqli_results(self, results):
-        self.txt_vuln.insert(tk.END, f"\n[+] SQL Injection Test Results:\n")
+        self.txt_vuln.insert(tk.END, f"[+] SQL Injection Test Results:\n")
         for payload, vulnerable, detail in results:
             status = "VULNERABLE" if vulnerable else "SAFE"
-            color_tag = "vuln" if vulnerable else "safe"
             self.txt_vuln.insert(tk.END, f"    → Payload: {payload} | Status: {status}\n")
             if detail:
                 self.txt_vuln.insert(tk.END, f"      Detail: {detail}\n")
+        self.txt_vuln.insert(tk.END, f"[+] Done.\n")
+        self.txt_vuln.see(tk.END)
         self.status.config(text="Ready")
 
     def _check_password_strength(self):
@@ -305,10 +323,11 @@ class SecurityToolkitApp:
             messagebox.showwarning("Input Error", "Please enter a password.")
             return
         strength, hash_val = self.sqli_tester.check_password_strength(password)
-        self.txt_vuln.delete(1.0, tk.END)
-        self.txt_vuln.insert(tk.END, f"[+] Password Strength Analysis\n")
+        self.txt_vuln.insert(tk.END, f"\n{'='*50}\n[+] Password Strength Analysis | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
         self.txt_vuln.insert(tk.END, f"    → Strength: {strength}\n")
         self.txt_vuln.insert(tk.END, f"    → SHA-256 Hash: {hash_val}\n")
+        self.txt_vuln.insert(tk.END, f"[+] Done.\n")
+        self.txt_vuln.see(tk.END)
 
     def _start_brute_force(self):
         target_hash = self.entry_password.get().strip()
@@ -316,8 +335,8 @@ class SecurityToolkitApp:
         if not target_hash or not wordlist:
             messagebox.showwarning("Input Error", "Please provide hash and wordlist path.")
             return
-        self.txt_vuln.delete(1.0, tk.END)
-        self.txt_vuln.insert(tk.END, f"[+] Starting brute force on hash...\n")
+        self.txt_vuln.insert(tk.END, f"\n{'='*50}\n[+] Starting brute force on hash... | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
+        self.txt_vuln.see(tk.END)
         self.status.config(text="Brute forcing hash...")
         threading.Thread(target=self._run_brute_force, args=(target_hash, wordlist), daemon=True).start()
 
@@ -331,9 +350,11 @@ class SecurityToolkitApp:
 
     def _display_brute_results(self, result):
         if result:
-            self.txt_vuln.insert(tk.END, f"\n[+] PASSWORD CRACKED: {result}\n")
+            self.txt_vuln.insert(tk.END, f"[+] PASSWORD CRACKED: {result}\n")
         else:
-            self.txt_vuln.insert(tk.END, f"\n[-] Password not found in wordlist.\n")
+            self.txt_vuln.insert(tk.END, f"[-] Password not found in wordlist.\n")
+        self.txt_vuln.insert(tk.END, f"[+] Done.\n")
+        self.txt_vuln.see(tk.END)
         self.status.config(text="Ready")
 
     # ───────────────────────────────
@@ -376,10 +397,15 @@ class SecurityToolkitApp:
         tk.Button(gen_frame, text="Generate & Save", command=self._generate_password,
                   bg="#cba6f7", fg="#1e1e2e", font=("Helvetica", 11, "bold"), cursor="hand2").grid(row=1, column=1, sticky=tk.W, pady=10)
 
-        # Output
-        self.txt_crypto = scrolledtext.ScrolledText(frame, height=12, bg="#181825", fg="#cdd6f4",
+        # Output + Clear
+        out_frame = tk.Frame(frame, bg="#1e1e2e")
+        out_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+        self.txt_crypto = scrolledtext.ScrolledText(out_frame, height=12, bg="#181825", fg="#cdd6f4",
                                                       font=("Consolas", 10), insertbackground="#cdd6f4")
-        self.txt_crypto.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+        self.txt_crypto.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+        btn_clear = tk.Button(out_frame, text="Clear\nOutput", command=lambda: self.txt_crypto.delete(1.0, tk.END),
+                              bg="#f38ba8", fg="#1e1e2e", font=("Helvetica", 9, "bold"), cursor="hand2")
+        btn_clear.pack(side=tk.RIGHT, padx=(5, 0), fill=tk.Y)
 
     def _browse_crypto_file(self):
         path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
@@ -394,10 +420,11 @@ class SecurityToolkitApp:
             return
         try:
             key, out_path = self.file_crypto.encrypt_file(filepath)
-            self.txt_crypto.delete(1.0, tk.END)
-            self.txt_crypto.insert(tk.END, f"[+] File encrypted successfully!\n")
+            self.txt_crypto.insert(tk.END, f"\n{'='*50}\n[+] File encrypted successfully! | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
             self.txt_crypto.insert(tk.END, f"    → Output: {out_path}\n")
             self.txt_crypto.insert(tk.END, f"    → Key (SAVE THIS): {key.decode()}\n")
+            self.txt_crypto.insert(tk.END, f"[+] Key also saved to: data/crypto/last_key.txt\n")
+            self.txt_crypto.see(tk.END)
             messagebox.showinfo("Success", f"File encrypted!\nKey saved to: data/crypto/last_key.txt")
         except Exception as e:
             messagebox.showerror("Error", str(e))
@@ -407,15 +434,18 @@ class SecurityToolkitApp:
         if not filepath or not os.path.exists(filepath):
             messagebox.showwarning("Input Error", "Please select a valid encrypted file.")
             return
-        # Ask for key
-        key = filedialog.askstring("Decryption Key", "Enter the Fernet key:")
+        # FIX #1: Use simpledialog.askstring instead of filedialog.askstring
+        key = simpledialog.askstring("Decryption Key", "Enter the Fernet key:", show="*")
         if not key:
             return
         try:
+            # Clean key (remove whitespace/newlines)
+            key = key.strip()
             out_path = self.file_crypto.decrypt_file(filepath, key.encode())
-            self.txt_crypto.delete(1.0, tk.END)
-            self.txt_crypto.insert(tk.END, f"[+] File decrypted successfully!\n")
+            self.txt_crypto.insert(tk.END, f"\n{'='*50}\n[+] File decrypted successfully! | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
             self.txt_crypto.insert(tk.END, f"    → Output: {out_path}\n")
+            self.txt_crypto.insert(tk.END, f"[+] Done.\n")
+            self.txt_crypto.see(tk.END)
             messagebox.showinfo("Success", f"File decrypted!\nSaved to: {out_path}")
         except Exception as e:
             messagebox.showerror("Error", f"Decryption failed: {e}")
@@ -427,10 +457,11 @@ class SecurityToolkitApp:
             messagebox.showerror("Input Error", "Length must be an integer.")
             return
         password, hash_path = self.pass_gen.generate_and_save(length)
-        self.txt_crypto.delete(1.0, tk.END)
-        self.txt_crypto.insert(tk.END, f"[+] Password generated and saved!\n")
+        self.txt_crypto.insert(tk.END, f"\n{'='*50}\n[+] Password generated and saved! | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
         self.txt_crypto.insert(tk.END, f"    → Password: {password}\n")
         self.txt_crypto.insert(tk.END, f"    → Salted Hash saved to: {hash_path}\n")
+        self.txt_crypto.insert(tk.END, f"[+] Done.\n")
+        self.txt_crypto.see(tk.END)
 
     # ───────────────────────────────
     # System Monitoring Tab
@@ -461,12 +492,20 @@ class SecurityToolkitApp:
         self.btn_start_monitor.pack(side=tk.LEFT, padx=(0, 10))
         self.btn_stop_monitor = tk.Button(btn_frame, text="Stop Monitoring", command=self._stop_monitor,
                                           bg="#f38ba8", fg="#1e1e2e", font=("Helvetica", 11, "bold"), cursor="hand2", state=tk.DISABLED)
-        self.btn_stop_monitor.pack(side=tk.LEFT)
+        self.btn_stop_monitor.pack(side=tk.LEFT, padx=(0, 10))
+        # FIX #4: View Logs button
+        tk.Button(btn_frame, text="View Logs", command=self._view_logs,
+                  bg="#89b4fa", fg="#1e1e2e", font=("Helvetica", 11, "bold"), cursor="hand2").pack(side=tk.LEFT)
 
-        # Output
-        self.txt_monitor = scrolledtext.ScrolledText(frame, height=15, bg="#181825", fg="#cdd6f4",
+        # Output + Clear
+        out_frame = tk.Frame(frame, bg="#1e1e2e")
+        out_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+        self.txt_monitor = scrolledtext.ScrolledText(out_frame, height=15, bg="#181825", fg="#cdd6f4",
                                                        font=("Consolas", 10), insertbackground="#cdd6f4")
-        self.txt_monitor.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+        self.txt_monitor.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+        btn_clear = tk.Button(out_frame, text="Clear\nOutput", command=lambda: self.txt_monitor.delete(1.0, tk.END),
+                              bg="#f38ba8", fg="#1e1e2e", font=("Helvetica", 9, "bold"), cursor="hand2")
+        btn_clear.pack(side=tk.RIGHT, padx=(5, 0), fill=tk.Y)
 
     def _start_monitor(self):
         try:
@@ -479,9 +518,9 @@ class SecurityToolkitApp:
             messagebox.showerror("Input Error", "Interval must be at least 1 second.")
             return
 
-        self.txt_monitor.delete(1.0, tk.END)
-        self.txt_monitor.insert(tk.END, f"[+] Starting monitoring...\n")
+        self.txt_monitor.insert(tk.END, f"\n{'='*50}\n[+] Starting monitoring... | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
         self.txt_monitor.insert(tk.END, f"    → Interval: {interval}s | Duration: {duration if duration > 0 else 'Infinite'}s\n")
+        self.txt_monitor.see(tk.END)
         self.status.config(text="Monitoring active...")
         self.btn_start_monitor.config(state=tk.DISABLED)
         self.btn_stop_monitor.config(state=tk.NORMAL)
@@ -504,12 +543,27 @@ class SecurityToolkitApp:
     def _stop_monitor(self):
         self.monitor.stop()
         self.txt_monitor.insert(tk.END, "[+] Stopping monitoring...\n")
+        self.txt_monitor.see(tk.END)
 
     def _monitor_stopped(self):
         self.btn_start_monitor.config(state=tk.NORMAL)
         self.btn_stop_monitor.config(state=tk.DISABLED)
         self.status.config(text="Ready")
         self.txt_monitor.insert(tk.END, "[+] Monitoring stopped.\n")
+        self.txt_monitor.see(tk.END)
+
+    def _view_logs(self):
+        """FIX #4: Open activity log file in output window."""
+        log_path = "data/activity_log.txt"
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            self.txt_monitor.insert(tk.END, f"\n{'='*50}\n[+] Activity Log Contents:\n")
+            self.txt_monitor.insert(tk.END, content)
+            self.txt_monitor.insert(tk.END, f"\n[+] End of log.\n")
+            self.txt_monitor.see(tk.END)
+        else:
+            messagebox.showwarning("No Logs", f"Log file not found: {log_path}\nStart monitoring first.")
 
     # ───────────────────────────────
     # Reports Tab
@@ -528,41 +582,43 @@ class SecurityToolkitApp:
         self.entry_report_title.grid(row=0, column=1, padx=5, pady=5)
         self.entry_report_title.insert(0, "Security Assessment Report")
 
-        tk.Label(ctrl_frame, text="Scan Results File:", bg="#313244", fg="#cdd6f4", font=("Helvetica", 11)).grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.entry_scan_file = tk.Entry(ctrl_frame, width=50, font=("Helvetica", 11))
-        self.entry_scan_file.grid(row=1, column=1, padx=5, pady=5)
-        tk.Button(ctrl_frame, text="Browse", command=self._browse_scan_file, bg="#89b4fa", fg="#1e1e2e",
-                  font=("Helvetica", 10, "bold"), cursor="hand2").grid(row=1, column=2, padx=5)
+        # FIX #3: Removed scan result file browse option
+        tk.Label(ctrl_frame, text="Mode:", bg="#313244", fg="#cdd6f4", font=("Helvetica", 11)).grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.report_mode = ttk.Combobox(ctrl_frame, values=["Demo Data", "Auto-Collect from Modules"], width=30, font=("Helvetica", 11))
+        self.report_mode.grid(row=1, column=1, sticky=tk.W, padx=5, pady=5)
+        self.report_mode.set("Demo Data")
+        self.report_mode.config(state="readonly")
 
         tk.Button(ctrl_frame, text="Generate Excel Report", command=self._generate_report,
                   bg="#cba6f7", fg="#1e1e2e", font=("Helvetica", 11, "bold"), cursor="hand2").grid(row=2, column=1, sticky=tk.W, pady=10)
 
-        # Output
-        self.txt_reports = scrolledtext.ScrolledText(frame, height=15, bg="#181825", fg="#cdd6f4",
+        # Output + Clear
+        out_frame = tk.Frame(frame, bg="#1e1e2e")
+        out_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+        self.txt_reports = scrolledtext.ScrolledText(out_frame, height=15, bg="#181825", fg="#cdd6f4",
                                                        font=("Consolas", 10), insertbackground="#cdd6f4")
-        self.txt_reports.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
-
-    def _browse_scan_file(self):
-        path = filedialog.askopenfilename(filetypes=[("Text/JSON files", "*.txt *.json"), ("All files", "*.*")])
-        if path:
-            self.entry_scan_file.delete(0, tk.END)
-            self.entry_scan_file.insert(0, path)
+        self.txt_reports.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+        btn_clear = tk.Button(out_frame, text="Clear\nOutput", command=lambda: self.txt_reports.delete(1.0, tk.END),
+                              bg="#f38ba8", fg="#1e1e2e", font=("Helvetica", 9, "bold"), cursor="hand2")
+        btn_clear.pack(side=tk.RIGHT, padx=(5, 0), fill=tk.Y)
 
     def _generate_report(self):
         title = self.entry_report_title.get().strip()
-        scan_file = self.entry_scan_file.get().strip()
+        mode = self.report_mode.get()
         if not title:
             messagebox.showwarning("Input Error", "Please provide a report title.")
             return
-        self.txt_reports.delete(1.0, tk.END)
-        self.txt_reports.insert(tk.END, f"[+] Generating report: {title}\n")
+        self.txt_reports.insert(tk.END, f"\n{'='*50}\n[+] Generating report: {title} | Mode: {mode} | {datetime.datetime.now().strftime('%H:%M:%S')}\n")
+        self.txt_reports.see(tk.END)
         self.status.config(text="Generating report...")
-        threading.Thread(target=self._run_generate_report, args=(title, scan_file), daemon=True).start()
+        threading.Thread(target=self._run_generate_report, args=(title, mode), daemon=True).start()
 
-    def _run_generate_report(self, title, scan_file):
+    def _run_generate_report(self, title, mode):
         try:
-            report_path = self.reporter.generate_excel(title, scan_file)
-            self.root.after(0, lambda: self.txt_reports.insert(tk.END, f"\n[+] Report saved to: {report_path}\n"))
+            # FIX #3: No external file needed, auto-generate based on mode
+            report_path = self.reporter.generate_excel(title, mode=mode)
+            self.root.after(0, lambda: self.txt_reports.insert(tk.END, f"[+] Report saved to: {report_path}\n"))
+            self.root.after(0, lambda: self.txt_reports.insert(tk.END, f"[+] Done.\n"))
             self.root.after(0, lambda: messagebox.showinfo("Success", f"Report generated!\n{report_path}"))
         except Exception as e:
             self.root.after(0, lambda: self.txt_reports.insert(tk.END, f"[ERROR] {e}\n"))
