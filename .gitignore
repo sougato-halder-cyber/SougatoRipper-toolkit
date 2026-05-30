@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec.bak
+data/keys/*.key
+data/screenshots/*.png
+data/reports/*.xlsx
+data/activity.log
